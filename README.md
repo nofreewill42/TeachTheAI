@@ -145,6 +145,9 @@ Yes - this starter uses non-streamed responses for simplicity. You can extend it
 **Do I need to understand the OpenAI API?**  
 No. The `server.py` handles all the API complexity. You just implement `generate_reply(text) -> text`.
 
+For a currently being developed prototype model as an example see the branch: model/my-first-model !
+That branch is the current state of development...!
+
 ## License
 
 MIT recommended. Add LICENSE if accepting contributions.
