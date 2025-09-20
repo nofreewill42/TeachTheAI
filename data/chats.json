@@ -1,0 +1,68 @@
+[
+  [
+    {
+      "role": "user",
+      "message": "halo",
+      "train": false
+    },
+    {
+      "role": "ai",
+      "message": "ha lo",
+      "train": false
+    },
+    {
+      "role": "user",
+      "message": "helo",
+      "train": false
+    },
+    {
+      "role": "ai",
+      "message": "helo",
+      "train": true
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "message": "halo",
+      "train": false
+    },
+    {
+      "role": "ai",
+      "message": "halo",
+      "train": true
+    },
+    {
+      "role": "user",
+      "message": "nagyon jó !",
+      "train": false
+    },
+    {
+      "role": "ai",
+      "message": "nagyon jó !",
+      "train": true
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "message": "hi",
+      "train": false
+    },
+    {
+      "role": "ai",
+      "message": "hi",
+      "train": false
+    },
+    {
+      "role": "user",
+      "message": "a",
+      "train": false
+    },
+    {
+      "role": "ai",
+      "message": "a",
+      "train": true
+    }
+  ]
+]
