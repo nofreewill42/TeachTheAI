@@ -10,14 +10,17 @@ import time
 app = FastAPI(title="Garage Echo - OpenWebUI")
 
 # ---- 1) Replace this function with your own model call ----------------------
+# def generate_reply(user_text: str) -> str:
+#     """
+#     Plug your model here.
+#     Example:
+#         return my_model.generate(user_text)
+#     For now we echo back the user's last message.
+#     """
+#     return user_text
+from serve_model import generate
 def generate_reply(user_text: str) -> str:
-    """
-    Plug your model here.
-    Example:
-        return my_model.generate(user_text)
-    For now we echo back the user's last message.
-    """
-    return user_text
+    return generate(user_text)
 # -----------------------------------------------------------------------------
 
 MODEL_ID = "garage-echo-1"
