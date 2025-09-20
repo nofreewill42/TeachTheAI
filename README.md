@@ -1,120 +1,73 @@
-# Garage Echo - OpenWebUI starter
+# TeachTheAI - OpenWebUI starter
 
-Tiny OpenAI-compatible FastAPI server that plugs into OpenWebUI. It echoes the user's last message. Swap one function to call your own model.
+Minimal OpenAI-compatible FastAPI server that plugs into OpenWebUI. It echoes the last user message so you can swap in your own local model later.
 
-## Files
+## What you get
+- A tiny HTTP API exposing:
+  - `GET /v1/models`
+  - `POST /v1/chat/completions`
+- Works with OpenWebUI out of the box
+- One function to replace with your own model call
 
-**server.py**
-```python
-# Minimal OpenAI-compatible FastAPI server for OpenWebUI.
-# Run: uvicorn server:app --host 127.0.0.1 --port 8000
+## Prerequisites
+- Python 3.10+ installed
+- OpenWebUI installed in any env where `open-webui` runs
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List, Literal, Optional
-from uuid import uuid4
-import time
+## Quick start
 
-app = FastAPI()
-MODEL_ID = "garage-echo-1"
-
-# ---- CHANGE THIS to call your own model -------------------------------------
-def generate_reply(user_text: str) -> str:
-    # Example: return my_model.generate(user_text)
-    return user_text
-# -----------------------------------------------------------------------------
-
-class Message(BaseModel):
-    role: Literal["system", "user", "assistant"]
-    content: str
-
-class ChatRequest(BaseModel):
-    model: str
-    messages: List[Message]
-    stream: Optional[bool] = False
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-
-@app.get("/")
-def health():
-    return {"ok": True, "model": MODEL_ID}
-
-@app.get("/v1/models")
-def list_models():
-    return {
-        "object": "list",
-        "data": [{
-            "id": MODEL_ID,
-            "object": "model",
-            "created": int(time.time()),
-            "owned_by": "you"
-        }]
-    }
-
-@app.post("/v1/chat/completions")
-def chat(req: ChatRequest):
-    if req.model != MODEL_ID:
-        raise HTTPException(status_code=404, detail=f"Unknown model '{req.model}'. Try '{MODEL_ID}'.")
-    user_text = next((m.content for m in reversed(req.messages) if m.role == "user"), None)
-    if user_text is None:
-        raise HTTPException(status_code=400, detail="No user message found.")
-    reply = generate_reply(user_text)
-    return {
-        "id": f"chatcmpl-{uuid4().hex}",
-        "object": "chat.completion",
-        "created": int(time.time()),
-        "model": req.model,
-        "choices": [{
-            "index": 0,
-            "message": {"role": "assistant", "content": reply},
-            "finish_reason": "stop"
-        }],
-        "usage": {
-            "prompt_tokens": 0,
-            "completion_tokens": len(reply.split()),
-            "total_tokens": len(reply.split())
-        },
-    }
-```
-
-**requirements.txt**
-- Use one of these patterns.
-
-```txt
-# exact pins - reproducible
-fastapi==0.116.2
-uvicorn==0.36.0
-pydantic==2.11.9
-```
-```txt
-# -or- loose pins
-fastapi>=0.116.2,<1
-uvicorn>=0.36.0,<1
-pydantic>=2.11.9,<3
-```
-
-## TLDR
+You will run two processes:
+- Process A: API on port 8000
+- Process B: OpenWebUI on port 3000
 
 ```bash
+# Process A - run the API inside this repo
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn server:app --host 127.0.0.1 --port 8000
 ```
 
-Point OpenWebUI to `http://127.0.0.1:8000/v1` with **Autorización: Ninguno**, select `garage-echo-1`, and chat.
+```bash
+# Process B - start OpenWebUI in another terminal
+# activate the environment where you installed open-webui
+# example:
+source ~/venvs/openwebui/bin/activate
+open-webui serve --host 127.0.0.1 --port 3000
+```
 
-## Why this works
+Open your browser at `http://127.0.0.1:3000`.
 
-OpenWebUI understands the OpenAI Chat Completions format. Expose:
-- `GET /v1/models`
-- `POST /v1/chat/completions`
+## Connect OpenWebUI to the API
 
-…and return the expected JSON.
+Use Spanish labels exactly as shown for clarity:
 
-## Integrate your model
+1. **Ajustes de Admin → Conexiones → Añadir conexión**  
+2. **Tipo de Conexión**: Externo  
+3. **Tipo de Proveedor**: OpenAI  
+4. **URL Base API**: `http://127.0.0.1:8000/v1`  
+5. **Autorización**: **Ninguno**  
+6. (Opcional) **IDs Modelo**: `garage-echo-1`  
+7. **Guardar**, then select `garage-echo-1` in the chat view and send a message
 
-Edit only this in `server.py`:
+## Sanity checks
+
+```bash
+# Health
+curl http://127.0.0.1:8000/
+# -> {"ok":true,"model":"garage-echo-1"}
+
+# Models
+curl http://127.0.0.1:8000/v1/models
+
+# Chat echo
+curl -H "Content-Type: application/json" \
+  -d '{"model":"garage-echo-1","messages":[{"role":"user","content":"hi"}]}' \
+  http://127.0.0.1:8000/v1/chat/completions
+```
+
+## Swap in your own model
+
+Edit `server.py` and change only this function:
 
 ```python
 def generate_reply(user_text: str) -> str:
@@ -122,7 +75,7 @@ def generate_reply(user_text: str) -> str:
     return user_text
 ```
 
-(Optional) load weights once:
+Optional: load weights once at startup in `server.py`:
 
 ```python
 @app.on_event("startup")
@@ -131,34 +84,12 @@ def load_model():
     my_model = load_your_weights()
 ```
 
-## Quick tests
+## Troubleshooting
 
-```bash
-curl http://127.0.0.1:8000/
-# -> {"ok":true,"model":"garage-echo-1"}
-
-curl http://127.0.0.1:8000/v1/models
-
-curl -H "Content-Type: application/json" \
-  -d '{"model":"garage-echo-1","messages":[{"role":"user","content":"hi"}]}' \
-  http://127.0.0.1:8000/v1/chat/completions
-```
-
-## Wire it to OpenWebUI - Spanish UI labels
-
-1. **Ajustes de Admin → Conexiones → Añadir conexión**
-2. **Tipo de Conexión**: Externo
-3. **Tipo de Proveedor**: OpenAI
-4. **URL Base API**: `http://127.0.0.1:8000/v1`
-5. **Autorización**: **Ninguno**
-6. (Opcional) **IDs Modelo**: `garage-echo-1`
-7. **Guardar**, luego selecciona `garage-echo-1` en el chat
-
-## Notes
-
-- Streaming is not required; this server returns a single non-streamed completion.
-- OpenWebUI reads `choices[0].message.content`.
-- Token usage fields are optional here.
+- Cannot open the UI: ensure OpenWebUI is running on `http://127.0.0.1:3000`.
+- OpenWebUI cannot reach the API: in the connection use **URL Base API** `http://127.0.0.1:8000/v1` and **Autorización: Ninguno**.
+- Port in use: pick another `--port` or stop the conflicting process.
+- Empty reply: your request must include at least one `{"role":"user","content":"..."}` message.
 
 ## License
 
