@@ -11,8 +11,8 @@ Minimal OpenAI-compatible FastAPI server that plugs into OpenWebUI. There is exa
 - Fully offline if your model runs locally
 
 **Cons**
-- No built-in token-level sampling (e.g., choose top-k per token)
-- OpenAI JSON shape is verbose (but you don't touch it here)
+- No built-in token-level sampling (e.g., choose top-k per token) - I mean I don't think and I even doubt it exists; but/although I haven't checked
+- The OpenAI JSON format for API communication is a bit complex, but you don't need to understand it since server.py handles it automatically
 
 ## What this repo does
 
@@ -22,9 +22,9 @@ This repo runs a tiny HTTP server (`server.py`) that implements just enough of t
   - `GET /v1/models` - tells UI your model IDs (e.g., "garage-echo-1")
   - `POST /v1/chat/completions` - UI sends chat messages; you return a reply
 
-- You add your model logic in **one function**: `generate_reply(user_text: str)`
+- You add your model logic by modifying **one function** defined in server.py: `generate_reply(user_text: str)`
 
-- Everything else in `server.py` is plumbing: parse request → call your function → wrap reply in OpenAI JSON (OpenWebUI reads `choices[0].message.content`)
+- Everything else in `server.py` is plumbing: parse request → call your function → wrap reply in OpenAI JSON (OpenWebUI reads `choices[0].message.content` - referred to in the cons)
 
 **Flow:**
 ```
@@ -32,6 +32,21 @@ OpenWebUI → GET /v1/models → server.py (returns "garage-echo-1")
 OpenWebUI → POST /v1/chat/completions → server.py (extracts user text)  
 server.py → calls generate_reply(text) → your code returns string
 server.py → returns JSON → OpenWebUI shows it in chat
+```
+
+## Prerequisites
+
+**For the API server (this repo):**
+- Python 3.10+
+
+**For the UI:**
+- OpenWebUI installed in any Python environment
+
+**Install OpenWebUI:**
+```bash
+python -m venv ~/venvs/openwebui
+source ~/venvs/openwebui/bin/activate
+pip install open-webui
 ```
 
 ## The one thing you change
@@ -57,16 +72,11 @@ def load_model():
 
 That's it. Don't touch request parsing or JSON response unless you know why.
 
-## Prerequisites
-
-- Python 3.10+
-- OpenWebUI installed (any env where `open-webui` runs)
-
 ## Quick start
 
 Run two processes (API on port 8000, UI on port 3000).
 
-**Process A - API** (inside this repo):
+**Process A - API server** (inside this repo - create venv and install reqs):
 
 ```bash
 python -m venv .venv
@@ -78,18 +88,17 @@ uvicorn server:app --host 127.0.0.1 --port 8000
 **Process B - OpenWebUI** (another terminal):
 
 ```bash
-# activate env where you installed open-webui, e.g.:
 source ~/venvs/openwebui/bin/activate
 open-webui serve --host 127.0.0.1 --port 3000
 ```
 
 Open browser at: **http://127.0.0.1:3000**
 
-## Connect OpenWebUI to API
+## Connect OpenWebUI to your API
 
-Use these exact Spanish UI labels:
+Refer to these Spanish UI labels:
 
-1. **Ajustes de Admin** → **Conexiones** → **Añadir conexión**
+1. **Ajustes de Admin** at the bottom left → **Conexiones** → **Añadir conexión** with a + sign on the right
 2. **Tipo de Conexión**: Externo  
 3. **Tipo de Proveedor**: OpenAI
 4. **URL Base API**: `http://127.0.0.1:8000/v1`
@@ -99,56 +108,42 @@ Use these exact Spanish UI labels:
 
 ## Sanity checks
 
-Health:
+Health check:
 ```bash
 curl http://127.0.0.1:8000/
 # -> {"ok":true,"model":"garage-echo-1"}
 ```
 
-Models:
+Models returned by the GET /v1/models:
 ```bash
 curl http://127.0.0.1:8000/v1/models
 ```
 
-Chat echo:
+Chat echo test:
 ```bash
 curl -H "Content-Type: application/json" \
 -d '{"model":"garage-echo-1","messages":[{"role":"user","content":"hi"}]}' \
 http://127.0.0.1:8000/v1/chat/completions
 ```
 
-## Requirements
-
-Exact pins (match your tested versions):
-
-```txt
-fastapi==0.116.2
-uvicorn==0.36.0  
-pydantic==2.11.9
-```
-
-Or loose pins:
-
-```txt
-fastapi>=0.116.2,<1
-uvicorn>=0.36.0,<1
-pydantic>=2.11.9,<3
-```
-
 ## Troubleshooting
 
-- **Port in use (8000/3000)**: change `--port` or stop other process
-- **OpenWebUI can't reach API**: use URL Base API `http://127.0.0.1:8000/v1` and **Autorización: Ninguno**
-- **Empty reply**: include at least one `{"role":"user","content":"..."}` message  
-- **Wrong model ID**: keep "garage-echo-1" or change both code and UI config consistently
+- **Port in use (8000/3000)**: change `--port` or find the conflicting process with lsof -i :8000 and stop it manually
+- **OpenWebUI can't reach API**: verify URL Base API is `http://127.0.0.1:8000/v1` and **Autorización: Ninguno**
+- **Empty reply**: ensure request includes at least one `{"role":"user","content":"..."}` message  
+- **Wrong model ID**: keep "garage-echo-1" or change both the code and OpenWebUI model ID consistently
+- **OpenWebUI won't start**: make sure you activated the correct environment where you installed `open-webui`
 
 ## FAQ
 
 **Why GET/POST routes?**  
-OpenWebUI uses the OpenAI API. It finds models via `GET /v1/models` and sends chats to `POST /v1/chat/completions`. This repo does just that minimum.
+OpenWebUI speaks the OpenAI API format. It discovers models via `GET /v1/models` and sends chats to `POST /v1/chat/completions`. This repo implements just that minimal subset so that you can enjoy the pros of using your custom models through OpenWebUI.
 
-**Add streaming later?**  
-Yes - this is non-streamed for simplicity. Extend if needed.
+**Can I add streaming later?**  
+Yes - this starter uses non-streamed responses for simplicity. You can extend it to stream tokens as they're generated.
+
+**Do I need to understand the OpenAI API?**  
+No. The `server.py` handles all the API complexity. You just implement `generate_reply(text) -> text`.
 
 ## License
 
