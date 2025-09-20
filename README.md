@@ -1,81 +1,77 @@
-# TeachTheAI - model/my-first-model Branch
+# TeachTheAI - prototype
+Minimal OpenAI-compatible FastAPI server that plugs into OpenWebUI, plus a branch with a lightweight local character LM prototype.
 
-This branch builds on **main** by adding a minimal local model implementation. You now have a dedicated entrypoint (`serve_model.py`) that wires your custom model into the OpenAI-compatible API for OpenWebUI.
+## Quick start
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn server:app --host 127.0.0.1 --port 8000
+```
 
-## What's New vs Main
+**OpenWebUI:**
+- Ajustes de Admin → Conexiones → Añadir conexión
+- Tipo de Conexión: Externo
+- Tipo de Proveedor: OpenAI
+- URL Base API: http://127.0.0.1:8000/v1
+- Autorización: Ninguno
+- Selecciona garage-echo-1 en el chat
 
-**Added files:**
-- `model.py` - your model class with `generate(text) -> str` method
-- `serve_model.py` - FastAPI app that calls your model (instead of the generic echo)
+(works with the non-streamed /v1/chat/completions response)
 
-**Unchanged:** `server.py` (kept as reference), `requirements.txt`, `.gitignore`
+## Branches
+- `main` - echo server scaffold for OpenWebUI. Endpoints: `/v1/models` and `/v1/chat/completions`. Good for wiring and smoke tests.
+- `model/my-first-model` - adds a simple local model surface, training scripts, and a serve entrypoint that calls `model.generate(...)`.
 
-## How Your Model Works
+## Data format
+Training conversations live at `data/chats.json` as a list of chats. Each chat is a list of turns:
 
-### Edit ONE place: `model.py`
+```json
+[
+  [
+    {"role":"user","message":"hi","train":false},
+    {"role":"ai","message":"hi","train":false},
+    {"role":"user","message":"hi","train":true},
+    {"role":"ai","message":"hi","train":true},
+  ],
+  [
+    {"role":"user","message":"a","train":false},
+    {"role":"ai","message":"a","train":true}
+  ]
+]
+```
+
+## Minimal dataset
+`dataset.py` exposes one conversation per index:
+
 ```python
-class MyFirstModel:
-    def __init__(self):
-        # Load weights/resources here once
-        pass
-
-    def generate(self, text: str) -> str:
-        # Your inference logic here
-        # Input: user text from OpenWebUI chat
-        # Output: string to show in UI
-        return f"[MY MODEL]: {text}"  # Replace with real generation
+from dataset import DS
+ds = DS("data/chats.json")
+conv = ds[0] # list[dict], untouched
+print(len(conv), conv) # you can later build masks from the 'train' flags
 ```
 
-### `serve_model.py` calls it automatically
-```python
-# Inside serve_model.py (don't edit unless you know why)
-def generate_reply(user_text: str) -> str:
-    return model.generate(user_text)  # Calls YOUR model - that is created from inside serve_model.py
-```
+## Minimal tokenizer
+`tokenizer.py` is a fixed ASCII char tokenizer with BOS/EOS. Quick demo:
 
-The rest wraps your string into OpenAI JSON that OpenWebUI expects.
-
-## Sanity Checks
-
-**Health:**
 ```bash
-curl http://127.0.0.1:8000/
-# -> {"ok":true,"model":"my-model-1"}
+python tokenizer.py
+# prints vocab size, a round-trip encode/decode, and UNK handling
 ```
 
-**Models:**
+## Local model branch
+Use the prototype branch for model work:
+
 ```bash
-curl http://127.0.0.1:8000/v1/models
+git checkout model/my-first-model
+# Train a tiny baseline
+python 02_train_model.py --data data/chats.json --max_steps 500
+# Serve the model
+uvicorn 03_serve_model:app --host 127.0.0.1 --port 8000
 ```
 
-**Test your model:**
-```bash
-curl -H "Content-Type: application/json" \
-  -d '{"model":"my-model-1","messages":[{"role":"user","content":"hello"}]}' \
-  http://127.0.0.1:8000/v1/chat/completions
-```
+Edit only `model.py` to change generation. `03_serve_model.py` calls your model and exposes the same OpenAI endpoints.
 
-## Compared to Main Branch
-
-| Main (`server.py`) | This Branch (`serve_model.py`) |
-|---|---|
-| Echoes user input | Calls your `model.generate()` |
-| Generic template | Model-specific wiring |
-| `MODEL_ID = "garage-echo-1"` | `MODEL_ID = "my-model-1"` (change as needed) |
-| Good for testing API | Good for actual model dev |
-
-Both use the same OpenWebUI connection steps.
-
-## Next Steps
-
-1. Test with simple inputs in OpenWebUI - tested, it works alright
-2. Export chats → prepare liked branches (when ready)
-3. Implement real LM in `model.py.generate()` - working at the character level
-4. Test LM with randomly filled embeddings as a sanity check.
-5. Build out the training pipeline.
-6. Try a model with some training, see if there is a significant difference or not.
-6. Online training? Is it possible to train the model one step when I hit like for a message?
-
-## License
-
-Recommended MIT (add `LICENSE` file if accepting contributions)
+## Roadmap
+- Keep one chat as one training sample - build masks from train per turn.
+- Start with char-level LM for simplicity - swap later if it shows promise.
