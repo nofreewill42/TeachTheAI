@@ -1,4 +1,4 @@
-# TeachTheAI - OpenWebUI Starter
+# TeachTheAI - echo server
 
 Minimal OpenAI-compatible FastAPI server that plugs into OpenWebUI. There is exactly **one function** you change to use your own local model; everything else is glue so the UI can talk to your code.
 
