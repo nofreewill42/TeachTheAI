@@ -1,4 +1,4 @@
-# Minimal OpenAI-compatible echo server for OpenWebUI
+# Minimal OpenAI-compatible server for OpenWebUI
 # Run: uvicorn server:app --host 127.0.0.1 --port 8000
 
 from fastapi import FastAPI
@@ -9,23 +9,15 @@ import time
 
 app = FastAPI(title="Garage Echo - OpenWebUI")
 
-# ---- 1) Replace this function with your own model call ----------------------
-# def generate_reply(user_text: str) -> str:
-#     """
-#     Plug your model here.
-#     Example:
-#         return my_model.generate(user_text)
-#     For now we echo back the user's last message.
-#     """
-#     return user_text
 from serve_model import generate
-def generate_reply(user_text: str) -> str:
-    return generate(user_text)
-# -----------------------------------------------------------------------------
+
+def generate_reply(messages, temperature=None, max_tokens=None) -> str:
+    # Convert Pydantic models to plain dicts and pass full convo
+    convo = [{"role": m.role, "content": m.content} for m in messages if m.role in ("user", "assistant")]
+    return generate(convo, temperature=temperature, max_tokens=max_tokens)
 
 MODEL_ID = "garage-echo-1"
 
-# Data models that match OpenAI's Chat Completions API (only what we need)
 class Message(BaseModel):
     role: Literal["system", "user", "assistant"]
     content: str
@@ -33,7 +25,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     model: str
     messages: List[Message]
-    stream: Optional[bool] = False  # OpenWebUI works fine with stream=False
+    stream: Optional[bool] = False
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
 
@@ -51,9 +43,7 @@ def list_models():
 
 @app.post("/v1/chat/completions")
 def chat(req: ChatRequest):
-    # Pick the last user message - this is the usual prompt for your model
-    user_text = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    reply = generate_reply(user_text)
+    reply = generate_reply(req.messages, temperature=req.temperature, max_tokens=req.max_tokens)
 
     now = int(time.time())
     choice = {
@@ -61,8 +51,7 @@ def chat(req: ChatRequest):
         "message": {"role": "assistant", "content": reply},
         "finish_reason": "stop",
     }
-    # usage is optional - keep simple
-    usage = {"prompt_tokens": 0, "completion_tokens": len(reply.split()), "total_tokens": len(reply.split())}
+    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     return {
         "id": f"chatcmpl-{uuid4().hex}",

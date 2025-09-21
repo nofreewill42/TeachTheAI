@@ -3,3 +3,4 @@ __pycache__/
 .webui_secret_key
 chats/
 checkpoints/
+data/chats.json
