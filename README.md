@@ -24,7 +24,7 @@ uvicorn server:app --host 127.0.0.1 --port 8000
 - `model/my-first-model` - adds a simple local model surface, training scripts, and a serve entrypoint that calls `model.generate(...)`.
 
 ## Data format
-Training conversations live at `data/chats.json` as a list of chats. Each chat is a list of turns:
+Training conversations live at `data/chats.json` as a list of chats. Each chat is a list of turns - train means there is intention to train the model on that turn's completion:
 
 ```json
 [
