@@ -9,16 +9,6 @@ pip install -r requirements.txt
 uvicorn server:app --host 127.0.0.1 --port 8000
 ```
 
-**OpenWebUI:**
-- Ajustes de Admin → Conexiones → Añadir conexión
-- Tipo de Conexión: Externo
-- Tipo de Proveedor: OpenAI
-- URL Base API: http://127.0.0.1:8000/v1
-- Autorización: Ninguno
-- Selecciona garage-echo-1 en el chat
-
-(works with the non-streamed /v1/chat/completions response)
-
 ## Branches
 - `main` - echo server scaffold for OpenWebUI. Endpoints: `/v1/models` and `/v1/chat/completions`. Good for wiring and smoke tests.
 - `model/my-first-model` - adds a simple local model surface, training scripts, and a serve entrypoint that calls `model.generate(...)`.
